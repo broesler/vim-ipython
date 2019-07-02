@@ -11,19 +11,26 @@
 " See ~/.vim/bundle/jedi-vim/autoload/jedi.vim for initialization routine
 function! s:init_python() abort 
     let s:init_outcome = 0
+
+    " We import/run as much as possible within the try block so that if
+    " something goes wrong we'll get a traceback to help us debug. sys and
+    " traceback are needed for exception handling, so they are outside of the
+    " try block - if they fail we won't be to print a traceback.
     let init_lines = [
-          \ 'import sys; import os; import vim',
-          \ 'vim_path, _ = os.path.split(vim.eval("expand(''<sfile>:p:h'')"))',
-          \ 'vim_pythonx_path = os.path.join(vim_path, "pythonx")',
-          \ 'if vim_pythonx_path not in sys.path:',
-          \ '    sys.path.append(vim_pythonx_path)',
+          \ 'import sys; import traceback',
           \ 'try:',
+          \ '    import os; import vim',
+          \ '    vim_path, _ = os.path.split(vim.eval("expand(''<sfile>:p:h'')"))',
+          \ '    vim_pythonx_path = os.path.join(vim_path, "pythonx")',
+          \ '    if vim_pythonx_path not in sys.path:',
+          \ '        sys.path.append(vim_pythonx_path)',
           \ '    import jupyter_vim',
-          \ 'except Exception as exc:',
+          \ '    vim.command(''let s:init_outcome = 1'')',
+          \ 'except:',
+          \ '    exc = sys.exc_info()[0]',
+          \ '    traceback.print_exc(file=sys.stdout)',
           \ '    vim.command(''let s:init_outcome = "could not import jupyter_vim:'
-          \                    .'{0}: {1}"''.format(exc.__class__.__name__, exc))',
-          \ 'else:',
-          \ '    vim.command(''let s:init_outcome = 1'')']
+          \                    .'{0}: {1}"''.format(exc.__class__.__name__, exc))']
 
     " Try running lines via python, which will set script variable
     try
